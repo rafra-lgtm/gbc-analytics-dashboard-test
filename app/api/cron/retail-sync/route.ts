@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncRetailOrdersToSupabase } from '@/lib/sync';
+import { RetailCrmApiError } from '@/lib/retailcrm';
 
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -21,6 +22,23 @@ export async function GET(request: NextRequest) {
     const stats = await syncRetailOrdersToSupabase(true);
     return NextResponse.json({ ok: true, stats });
   } catch (error) {
+    if (error instanceof RetailCrmApiError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: error.message,
+          upstream: {
+            status: error.details.status ?? null,
+            statusText: error.details.statusText ?? null,
+            message: error.details.message ?? null,
+            endpoint: error.details.endpoint,
+            responseText: error.details.responseText ?? null
+          }
+        },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
