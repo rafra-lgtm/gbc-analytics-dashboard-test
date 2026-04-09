@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncRetailOrdersToSupabase } from '@/lib/sync';
 import { RetailCrmApiError } from '@/lib/retailcrm';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+};
+
+function jsonNoStore(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(
+    {
+      ...body,
+      executedAt: new Date().toISOString()
+    },
+    { status, headers: NO_STORE_HEADERS }
+  );
+}
+
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true;
@@ -15,15 +32,15 @@ function isAuthorized(request: NextRequest): boolean {
 
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    return jsonNoStore({ ok: false, error: 'Unauthorized' }, 401);
   }
 
   try {
     const stats = await syncRetailOrdersToSupabase(true);
-    return NextResponse.json({ ok: true, stats });
+    return jsonNoStore({ ok: true, stats });
   } catch (error) {
     if (error instanceof RetailCrmApiError) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           ok: false,
           error: error.message,
@@ -35,13 +52,13 @@ export async function GET(request: NextRequest) {
             responseText: error.details.responseText ?? null
           }
         },
-        { status: 502 }
+        502
       );
     }
 
-    return NextResponse.json(
+    return jsonNoStore(
       { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      500
     );
   }
 }
