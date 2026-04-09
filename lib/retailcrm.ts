@@ -142,6 +142,13 @@ function toErrorMessage(details: RetailCrmApiErrorDetails) {
 export async function createRetailOrder(order: Record<string, unknown>) {
   const errors: RetailCrmApiError[] = [];
   const { apiKey, site } = getRetailCrmConfig();
+  const retailCrmOrderType = process.env.RETAILCRM_ORDER_TYPE;
+
+  const payloadOrder: Record<string, unknown> = { ...order };
+  delete payloadOrder.orderType;
+  if (retailCrmOrderType) {
+    payloadOrder.orderType = retailCrmOrderType;
+  }
 
   for (const version of RETAIL_API_VERSIONS) {
     const url = buildRetailUrl(RETAILCRM_CREATE_ENDPOINT, version, {}, false);
@@ -150,7 +157,7 @@ export async function createRetailOrder(order: Record<string, unknown>) {
     const body = new URLSearchParams();
     body.set('apiKey', apiKey);
     body.set('site', site);
-    body.set('order', JSON.stringify(order));
+    body.set('order', JSON.stringify(payloadOrder));
 
     try {
       const response = await fetch(url, {
