@@ -1,6 +1,6 @@
 import { OrdersChart } from '@/components/orders-chart';
 import { getSupabaseAdminClient } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, resolveDashboardCurrency } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,6 +41,7 @@ export default async function HomePage() {
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_sum ?? 0), 0);
   const avgCheck = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const displayCurrency = resolveDashboardCurrency(orders.map((order) => order.currency), 'RUB');
 
   const byDay = orders.reduce<Record<string, { date: string; orders: number; totalSum: number }>>((acc, order) => {
     const date = dayKey(order.created_at_retailcrm);
@@ -68,13 +69,13 @@ export default async function HomePage() {
 
       <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 16 }}>
         <Card title="Всего заказов" value={String(totalOrders)} />
-        <Card title="Общая сумма" value={formatCurrency(totalRevenue)} />
-        <Card title="Средний чек" value={formatCurrency(avgCheck)} />
+        <Card title="Общая сумма" value={formatCurrency(totalRevenue, displayCurrency)} />
+        <Card title="Средний чек" value={formatCurrency(avgCheck, displayCurrency)} />
       </section>
 
       <section style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e5e7eb', marginBottom: 16 }}>
         <h2 style={{ marginTop: 0, fontSize: 18 }}>Заказы по дням</h2>
-        {chartData.length > 0 ? <OrdersChart data={chartData} /> : <EmptyState text="Пока нет данных для графика" />}
+        {chartData.length > 0 ? <OrdersChart data={chartData} currency={displayCurrency} /> : <EmptyState text="Пока нет данных для графика" />}
       </section>
 
       <section style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e5e7eb' }}>
@@ -99,7 +100,7 @@ export default async function HomePage() {
                     <td style={{ padding: '10px 8px' }}>{order.order_number ?? order.retailcrm_id}</td>
                     <td style={{ padding: '10px 8px' }}>{order.customer_name ?? '—'}</td>
                     <td style={{ padding: '10px 8px' }}>{order.status ?? '—'}</td>
-                    <td style={{ padding: '10px 8px' }}>{formatCurrency(order.total_sum, order.currency || 'KZT')}</td>
+                    <td style={{ padding: '10px 8px' }}>{formatCurrency(order.total_sum, displayCurrency)}</td>
                     <td style={{ padding: '10px 8px' }}>
                       {order.created_at_retailcrm ? new Date(order.created_at_retailcrm).toLocaleString('ru-RU') : '—'}
                     </td>
