@@ -12,7 +12,10 @@ function shortOrderError(index: number, order: RawOrder, error: unknown) {
     `#${index + 1}`;
 
   if (error instanceof RetailCrmApiError) {
-    return `Order ${identifier}: ${error.details.message ?? error.message}`;
+    const baseError = error.details.message ?? error.message;
+    const responseText = error.details.responseText ? `; responseText=${error.details.responseText}` : '';
+
+    return `Order ${identifier}: ${baseError}${responseText}`;
   }
 
   if (error instanceof Error) {
