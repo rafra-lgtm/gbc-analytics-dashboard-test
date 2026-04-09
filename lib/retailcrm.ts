@@ -4,6 +4,7 @@ const RETAIL_API_VERSIONS = ['v5', 'v4'] as const;
 const DEFAULT_CREATE_ENDPOINT = '/orders/create';
 
 const RETAILCRM_CREATE_ENDPOINT = process.env.RETAILCRM_CREATE_ENDPOINT || DEFAULT_CREATE_ENDPOINT;
+const RETAILCRM_ORDER_CURRENCY = process.env.RETAILCRM_ORDER_CURRENCY || 'KZT';
 
 type RetailVersion = (typeof RETAIL_API_VERSIONS)[number];
 
@@ -157,6 +158,9 @@ export async function createRetailOrder(order: Record<string, unknown>) {
   delete payloadOrder.orderType;
   if (retailCrmOrderType) {
     payloadOrder.orderType = retailCrmOrderType;
+  }
+  if (typeof payloadOrder.currency !== 'string' || !payloadOrder.currency.trim()) {
+    payloadOrder.currency = RETAILCRM_ORDER_CURRENCY;
   }
 
   for (const version of RETAIL_API_VERSIONS) {

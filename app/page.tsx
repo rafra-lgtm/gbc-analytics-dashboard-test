@@ -41,7 +41,7 @@ export default async function HomePage() {
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_sum ?? 0), 0);
   const avgCheck = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const displayCurrency = resolveDashboardCurrency(orders.map((order) => order.currency), 'RUB');
+  const displayCurrency = resolveDashboardCurrency(orders.map((order) => order.currency), 'KZT');
 
   const byDay = orders.reduce<Record<string, { date: string; orders: number; totalSum: number }>>((acc, order) => {
     const date = dayKey(order.created_at_retailcrm);
