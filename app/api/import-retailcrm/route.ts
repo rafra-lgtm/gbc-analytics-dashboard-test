@@ -4,6 +4,12 @@ import { NextResponse } from 'next/server';
 import { RetailCrmApiError, createRetailOrder } from '@/lib/retailcrm';
 
 type RawOrder = Record<string, unknown>;
+type ImportSuccess = {
+  email?: string;
+  id: number | string;
+  number?: number | string;
+  site?: string;
+};
 
 function shortOrderError(index: number, order: RawOrder, error: unknown) {
   const identifier =
@@ -54,12 +60,39 @@ export async function GET() {
     const orders = parsed as RawOrder[];
     let imported = 0;
     let failed = 0;
+    const successes: ImportSuccess[] = [];
     const errors: string[] = [];
 
     for (const [index, order] of orders.entries()) {
       try {
-        await createRetailOrder(order);
+        const result = await createRetailOrder(order);
+        const id = result.id ?? (result.order?.id as number | string | undefined);
+        const number = result.number ?? (result.order?.number as number | string | undefined);
+        const site = result.site ?? (typeof order.site === 'string' ? order.site : undefined);
+
+        const created =
+          result.success === true &&
+          (typeof id === 'string' || typeof id === 'number' || (result.order && typeof result.order === 'object'));
+
+        if (!created || (typeof id !== 'string' && typeof id !== 'number')) {
+          failed += 1;
+          errors.push(
+            `Order ${
+              (typeof order.email === 'string' && order.email) ||
+              (typeof order.phone === 'string' && order.phone) ||
+              `#${index + 1}`
+            }: RetailCRM did not return created order id`
+          );
+          continue;
+        }
+
         imported += 1;
+        successes.push({
+          email: typeof order.email === 'string' ? order.email : undefined,
+          id,
+          number: typeof number === 'string' || typeof number === 'number' ? number : undefined,
+          site
+        });
       } catch (error) {
         failed += 1;
         errors.push(shortOrderError(index, order, error));
@@ -70,6 +103,7 @@ export async function GET() {
       ok: true,
       imported,
       failed,
+      successes,
       errors
     });
   } catch (error) {

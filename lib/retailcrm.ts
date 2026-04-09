@@ -25,6 +25,15 @@ type RetailCrmApiErrorDetails = {
   limit?: number;
 };
 
+export type RetailCrmCreateOrderResult = {
+  success: boolean;
+  id?: number | string;
+  number?: number | string;
+  site?: string;
+  order?: Record<string, unknown>;
+  raw: Record<string, unknown>;
+};
+
 export class RetailCrmApiError extends Error {
   details: RetailCrmApiErrorDetails;
 
@@ -193,7 +202,23 @@ export async function createRetailOrder(order: Record<string, unknown>) {
         continue;
       }
 
-      return json ?? {};
+      const normalizedJson = (json ?? {}) as Record<string, unknown>;
+      const responseOrder =
+        normalizedJson.order && typeof normalizedJson.order === 'object'
+          ? (normalizedJson.order as Record<string, unknown>)
+          : undefined;
+      const id = normalizedJson.id ?? responseOrder?.id;
+      const number = normalizedJson.number ?? responseOrder?.number;
+      const responseSite = normalizedJson.site ?? responseOrder?.site;
+
+      return {
+        success: true,
+        id: typeof id === 'string' || typeof id === 'number' ? id : undefined,
+        number: typeof number === 'string' || typeof number === 'number' ? number : undefined,
+        site: typeof responseSite === 'string' ? responseSite : site,
+        order: responseOrder,
+        raw: normalizedJson
+      } satisfies RetailCrmCreateOrderResult;
     } catch (error) {
       const details: RetailCrmApiErrorDetails = {
         context: 'createOrder',
