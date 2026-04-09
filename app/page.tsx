@@ -2,6 +2,9 @@ import { OrdersChart } from '@/components/orders-chart';
 import { getSupabaseAdminClient } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type OrderRow = {
   retailcrm_id: string;
   order_number: string | null;
