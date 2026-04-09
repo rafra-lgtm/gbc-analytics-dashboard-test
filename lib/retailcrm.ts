@@ -124,6 +124,7 @@ function toErrorMessage(details: RetailCrmApiErrorDetails) {
     details.status ? `status=${details.status}` : undefined,
     details.statusText ? `statusText=${details.statusText}` : undefined,
     details.message ? `message=${details.message}` : undefined,
+    details.responseText ? `responseText=${details.responseText}` : undefined,
     details.endpoint ? `endpoint=${details.endpoint}` : undefined
   ]
     .filter(Boolean)
@@ -159,6 +160,16 @@ export async function createRetailOrder(order: Record<string, unknown>) {
           message,
           responseText
         };
+
+        if (response.status >= 400) {
+          console.error('RetailCRM createOrder error response', {
+            status: response.status,
+            statusText: response.statusText,
+            responseText,
+            endpoint: sanitizedEndpoint
+          });
+        }
+
         errors.push(new RetailCrmApiError(toErrorMessage(details), details));
         continue;
       }
