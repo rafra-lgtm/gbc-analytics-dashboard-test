@@ -38,19 +38,27 @@ export class RetailCrmApiError extends Error {
 function getRetailCrmConfig() {
   const baseUrl = process.env.RETAILCRM_BASE_URL;
   const apiKey = process.env.RETAILCRM_API_KEY;
+  const site = process.env.RETAILCRM_SITE || 'main';
 
   if (!baseUrl || !apiKey) {
     throw new Error('RETAILCRM_BASE_URL and RETAILCRM_API_KEY are required');
   }
 
-  return { baseUrl: baseUrl.replace(/\/$/, ''), apiKey };
+  return { baseUrl: baseUrl.replace(/\/$/, ''), apiKey, site };
 }
 
-function buildRetailUrl(path: string, version: RetailVersion, params: Record<string, string | number> = {}) {
+function buildRetailUrl(
+  path: string,
+  version: RetailVersion,
+  params: Record<string, string | number> = {},
+  includeApiKey = true
+) {
   const { baseUrl, apiKey } = getRetailCrmConfig();
   const url = new URL(`${baseUrl}/api/${version}${path}`);
 
-  url.searchParams.set('apiKey', apiKey);
+  if (includeApiKey) {
+    url.searchParams.set('apiKey', apiKey);
+  }
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, String(value));
   });
@@ -133,17 +141,21 @@ function toErrorMessage(details: RetailCrmApiErrorDetails) {
 
 export async function createRetailOrder(order: Record<string, unknown>) {
   const errors: RetailCrmApiError[] = [];
+  const { apiKey, site } = getRetailCrmConfig();
 
   for (const version of RETAIL_API_VERSIONS) {
-    const url = buildRetailUrl(RETAILCRM_CREATE_ENDPOINT, version);
+    const url = buildRetailUrl(RETAILCRM_CREATE_ENDPOINT, version, {}, false);
     const sanitizedEndpoint = redactApiKey(url.toString());
 
-    const body = JSON.stringify({ apiKey: getRetailCrmConfig().apiKey, order });
+    const body = new URLSearchParams();
+    body.set('apiKey', apiKey);
+    body.set('site', site);
+    body.set('order', JSON.stringify(order));
 
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
         body
       });
 
