@@ -34,10 +34,15 @@ export function normalizeRetailOrder(order: RetailCrmOrder): NormalizedOrder {
     customer_phone: extractPhone(order),
     status: typeof order.status === 'string' ? order.status : null,
     total_sum: total,
-    currency: typeof order.currency === 'string' ? order.currency : 'KZT',
+    currency: typeof order.currency === 'string' && order.currency.trim() ? order.currency : 'KZT',
     created_at_retailcrm: typeof order.createdAt === 'string' ? order.createdAt : null,
     raw: order
   };
+}
+
+export function resolveDashboardCurrency(currencies: Array<string | null | undefined>, fallback = 'KZT'): string {
+  const unique = Array.from(new Set(currencies.map((currency) => currency?.trim()).filter(Boolean)));
+  return unique.length === 1 ? unique[0]! : fallback;
 }
 
 export function formatCurrency(value: number, currency = 'KZT'): string {

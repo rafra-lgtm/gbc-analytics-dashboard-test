@@ -4,6 +4,7 @@ const RETAIL_API_VERSIONS = ['v5', 'v4'] as const;
 const DEFAULT_CREATE_ENDPOINT = '/orders/create';
 
 const RETAILCRM_CREATE_ENDPOINT = process.env.RETAILCRM_CREATE_ENDPOINT || DEFAULT_CREATE_ENDPOINT;
+const RETAILCRM_ORDER_CURRENCY = process.env.RETAILCRM_ORDER_CURRENCY || 'KZT';
 
 type RetailVersion = (typeof RETAIL_API_VERSIONS)[number];
 
@@ -23,6 +24,15 @@ type RetailCrmApiErrorDetails = {
   responseText?: string;
   page?: number;
   limit?: number;
+};
+
+export type RetailCrmCreateOrderResult = {
+  success: boolean;
+  id?: number | string;
+  number?: number | string;
+  site?: string;
+  order?: Record<string, unknown>;
+  raw: Record<string, unknown>;
 };
 
 export class RetailCrmApiError extends Error {
@@ -149,6 +159,9 @@ export async function createRetailOrder(order: Record<string, unknown>) {
   if (retailCrmOrderType) {
     payloadOrder.orderType = retailCrmOrderType;
   }
+  if (typeof payloadOrder.currency !== 'string' || !payloadOrder.currency.trim()) {
+    payloadOrder.currency = RETAILCRM_ORDER_CURRENCY;
+  }
 
   for (const version of RETAIL_API_VERSIONS) {
     const url = buildRetailUrl(RETAILCRM_CREATE_ENDPOINT, version, {}, false);
@@ -193,7 +206,23 @@ export async function createRetailOrder(order: Record<string, unknown>) {
         continue;
       }
 
-      return json ?? {};
+      const normalizedJson = (json ?? {}) as Record<string, unknown>;
+      const responseOrder =
+        normalizedJson.order && typeof normalizedJson.order === 'object'
+          ? (normalizedJson.order as Record<string, unknown>)
+          : undefined;
+      const id = normalizedJson.id ?? responseOrder?.id;
+      const number = normalizedJson.number ?? responseOrder?.number;
+      const responseSite = normalizedJson.site ?? responseOrder?.site;
+
+      return {
+        success: true,
+        id: typeof id === 'string' || typeof id === 'number' ? id : undefined,
+        number: typeof number === 'string' || typeof number === 'number' ? number : undefined,
+        site: typeof responseSite === 'string' ? responseSite : site,
+        order: responseOrder,
+        raw: normalizedJson
+      } satisfies RetailCrmCreateOrderResult;
     } catch (error) {
       const details: RetailCrmApiErrorDetails = {
         context: 'createOrder',
